@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master of the Remote: Power Choice Challenge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Open+Sans:wght@400;700&display=swap');
+
+        :root {
+            --red-zone: #ef4444;    /* Red: Angry/Out of Control */
+            --yellow-zone: #facc15; /* Yellow: Frustrated/Wiggly */
+            --green-zone: #22c55e;  /* Green: Calm/Ready */
+            --blue-zone: #3b82f6;   /* Blue: Sad/Tired */
+        }
+
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: #1a1a1a;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .title-font {
+            font-family: 'Bangers', cursive;
+            letter-spacing: 2px;
+        }
+
+        .remote-btn {
+            transition: transform 0.1s active;
+            box-shadow: 0 8px 0 #b91c1c;
+        }
+
+        .remote-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 4px 0 #b91c1c;
+        }
+
+        .power-up-anim {
+            animation: powerup 0.8s ease-out forwards;
+        }
+
+        @keyframes powerup {
+            0% { transform: scale(0.5) translateY(0); opacity: 0; }
+            50% { transform: scale(1.2) translateY(-50px); opacity: 1; }
+            100% { transform: scale(1) translateY(-100px); opacity: 0; }
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #facc15;
+            animation: fall 3s linear infinite;
+        }
+
+        @keyframes fall {
+            to { transform: translateY(100vh) rotate(360deg); }
+        }
+
+        .choice-btn {
+            transition: all 0.2s ease;
+            border-bottom: 4px solid rgba(0,0,0,0.3);
+        }
+        .choice-btn:active {
+            transform: translateY(2px);
+            border-bottom-width: 2px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- Game Container -->
+    <div id="game-container" class="w-full max-w-2xl bg-gray-900 border-4 border-gray-700 rounded-3xl p-6 relative shadow-2xl overflow-hidden">
+        
+        <!-- Header / Progress -->
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="title-font text-2xl md:text-4xl text-yellow-400 uppercase tracking-wider">Power Choice Challenge</h1>
+            <div id="progress-dots" class="flex gap-1">
+                <!-- Dots injected via JS -->
+            </div>
+        </div>
+
+        <!-- Start Screen -->
+        <div id="screen-start" class="text-center space-y-6 py-10">
+            <div class="text-8xl mb-4">🎮</div>
+            <h2 class="title-font text-4xl text-white">ARE YOU READY?</h2>
+            <p class="text-xl px-4">Pause the timer when you feel the impulse, then choose the <span class="text-green-400 font-bold">POWER ACTION</span>.</p>
+            <button onclick="startGame()" class="bg-green-500 hover:bg-green-400 text-black font-bold py-4 px-12 rounded-full text-2xl transition-all transform hover:scale-105 shadow-lg">
+                START MISSION
+            </button>
+        </div>
+
+        <!-- Gameplay Screen -->
+        <div id="screen-game" class="hidden space-y-6 relative">
+            <!-- Zone Indicator & Scenario -->
+            <div id="zone-indicator" class="w-full py-2 px-4 rounded-t-xl text-center font-bold text-black uppercase tracking-widest shadow-inner">
+                Yellow Zone
+            </div>
+            <div class="bg-gray-800 p-6 rounded-b-xl border-t-0 border-2 border-gray-700 min-h-[120px] flex items-center justify-center">
+                <p id="scenario-text" class="text-xl md:text-2xl leading-relaxed text-center font-semibold italic">
+                    Scenario loading...
+                </p>
+            </div>
+
+            <!-- Timer & Pause Section -->
+            <div id="control-section" class="flex flex-col items-center space-y-4">
+                <div id="timer-display" class="text-6xl font-mono text-red-500 font-bold">15</div>
+                
+                <button id="pause-btn" onclick="handlePause()" class="remote-btn w-32 h-32 md:w-40 md:h-40 bg-red-600 rounded-full border-8 border-gray-300 flex items-center justify-center flex-col gap-1 hover:bg-red-500 transition-colors">
+                    <div class="w-12 h-12 flex items-center justify-center">
+                        <svg viewBox="0 0 24 24" fill="white" class="w-full h-full">
+                            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                        </svg>
+                    </div>
+                    <span class="text-white font-bold text-sm md:text-base uppercase tracking-tighter">Pause Impulse</span>
+                </button>
+                <p class="text-gray-400 text-sm animate-pulse">Wait for it... then CLICK TO PAUSE!</p>
+            </div>
+
+            <!-- Multiple Choice Section (Hidden until Paused) -->
+            <div id="choice-section" class="hidden space-y-4 animate-in fade-in zoom-in duration-300">
+                <p class="text-center text-yellow-400 font-bold uppercase tracking-widest">Select your Power Choice:</p>
+                <div id="options-container" class="grid grid-cols-1 gap-3">
+                    <!-- Buttons injected via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Success Message Popup -->
+        <div id="power-up-msg" class="absolute inset-0 flex items-center justify-center pointer-events-none z-50 hidden">
+            <div id="power-up-text" class="text-yellow-400 font-bold text-4xl title-font power-up-anim">POWER UP!</div>
+        </div>
+
+        <!-- Final Screen -->
+        <div id="screen-finish" class="hidden text-center space-y-6">
+            <div class="border-8 border-double border-yellow-500 p-8 rounded-xl bg-white text-black shadow-2xl">
+                <h2 class="title-font text-5xl mb-4">MISSION COMPLETE</h2>
+                <p class="text-xl mb-2">This certifies that</p>
+                <h3 class="text-4xl font-bold underline decoration-yellow-500 mb-4 uppercase">Master of the Remote</h3>
+                <p class="text-lg">Has mastered the art of <strong>Pausing</strong> and choosing <strong>Safe Actions</strong>!</p>
+                <div class="mt-8 flex justify-between items-end">
+                    <div class="text-left">
+                        <div class="w-32 border-b-2 border-black"></div>
+                        <span class="text-xs">Self-Regulation Rank: ELITE</span>
+                    </div>
+                    <div class="text-7xl">🏆</div>
+                </div>
+            </div>
+            <button onclick="location.reload()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-10 rounded-full text-xl shadow-lg transition-transform hover:scale-105">
+                RE-TAKE CHALLENGE
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        const scenarios = [
+            { 
+                text: "Your game freezes right before you win. You feel heat in your chest!", 
+                zone: "Yellow", 
+                color: "#facc15",
+                choices: [
+                    { text: "Throw the controller at the floor", correct: false },
+                    { text: "Walk away and take 3 slow breaths", correct: true },
+                    { text: "Sweep everything to the floor", correct: false }
+                ]
+            },
+            { 
+                text: "The pizza place ran out of your favorite topping. Your stomach feels tight.", 
+                zone: "Yellow", 
+                color: "#facc15",
+                choices: [
+                    { text: "Tell yourself: 'I can try something new today'", correct: true },
+                    { text: "Refuse to eat", correct: false },
+                    { text: "Yell at the person serving the food", correct: false }
+                ]
+            },
+            { 
+                text: "Your class is so noisy today. You feel like you're going to explode.", 
+                zone: "Red", 
+                color: "#ef4444",
+                choices: [
+                    { text: "Cover your ears and walk to a quiet spot", correct: true },
+                    { text: "Run out of your classroom", correct: false },
+                    { text: "Scream as loud as you can to block it out", correct: false }
+                ]
+            },
+            { 
+                text: "UOI lesson today feels very long. You are bored", 
+                zone: "Yellow", 
+                color: "#facc15",
+                choices: [
+                    { text: "Doodle on your journal", correct: false },
+                    { text: "Raise your hand and ask for a 'Power Break'", correct: true },
+                    { text: "Put your head on the desk and nap", correct: false }
+                ]
+            },
+            { 
+                text: "The lunch line is taking forever. Your legs want to push ahead.", 
+                zone: "Yellow", 
+                color: "#facc15",
+                choices: [
+                    { text: "Cut in front of the others", correct: false },
+                    { text: "Push the others to fight for a spot in front", correct: false },
+                    { text: "Play mini games with a friend while pueuing", correct: true }
+                ]
+            },
+            { 
+                text: "Your favorite lucky pencil is gone. You feel a sad 'Blue' buzz.", 
+                zone: "Blue", 
+                color: "#3b82f6",
+                choices: [
+                    { text: "Accuse the person sitting next to you", correct: false },
+                    { text: "Stop working and start a search around your classroom", correct: false },
+                    { text: "Ask a friend politely for a spare", correct: true }
+                ]
+            },
+            { 
+                text: "A classmate points out a mistake on your worksheet. You feel a spark of anger.", 
+                zone: "Red", 
+                color: "#ef4444",
+                choices: [
+                    { text: "Yell 'SHUT UP!' at the person", correct: false },
+                    { text: "Say 'Oh! Thanks for helping me'", correct: true },
+                    { text: "Push that classmate away", correct: false }
+                ]
+            },
+            { 
+                text: "You're sharing your idea, but someone talks over you. You feel Red Zone sparks.", 
+                zone: "Red", 
+                color: "#ef4444",
+                choices: [
+                    { text: "Wait for a pause and say 'Can I finish?'", correct: true },
+                    { text: "Walk over and tell them to shut up", correct: false },
+                    { text: "Stomp away and refuse to talk anymore", correct: false }
+                ]
+            },
+            { 
+                text: "PE lesson is cancelled for an assembly. You were disappointed.", 
+                zone: "Yellow", 
+                color: "#facc15",
+                choices: [
+                    { text: "Hide in the bathroom so you don't go", correct: false },
+                    { text: "Groan loudly the whole way there", correct: false },
+                    { text: "Tell yourself 'it's okay to feel disappointed' and go with the change", correct: true }
+                ]
+            },
+            { 
+                text: "You have so many homework to do over the weekend. Brain feels like spinning.", 
+                zone: "Yellow", 
+                color: "#facc15",
+                choices: [
+                    { text: "Tell your teacher you lost your homework", correct: false },
+                    { text: "Pick the easiest thing and start there", correct: true },
+                    { text: "Pretend you already did it", correct: false }
+                ]
+            }
+        ];
+
+        let currentIdx = 0;
+        let timeLeft = 15;
+        let timerInterval = null;
+        let isPaused = false;
+
+        function initProgress() {
+            const container = document.getElementById('progress-dots');
+            container.innerHTML = '';
+            for(let i=0; i<scenarios.length; i++) {
+                const dot = document.createElement('div');
+                dot.className = `w-3 h-3 rounded-full bg-gray-700 transition-colors`;
+                dot.id = `dot-${i}`;
+                container.appendChild(dot);
+            }
+        }
+
+        function startGame() {
+            document.getElementById('screen-start').classList.add('hidden');
+            document.getElementById('screen-game').classList.remove('hidden');
+            initProgress();
+            loadScenario();
+        }
+
+        function loadScenario() {
+            const scenario = scenarios[currentIdx];
+            const indicator = document.getElementById('zone-indicator');
+            const scenarioText = document.getElementById('scenario-text');
+            const timerDisp = document.getElementById('timer-display');
+            const optionsContainer = document.getElementById('options-container');
+            
+            // Reset UI
+            isPaused = false;
+            timeLeft = 15;
+            timerDisp.innerText = timeLeft;
+            timerDisp.className = "text-6xl font-mono text-red-500 font-bold";
+            document.getElementById('choice-section').classList.add('hidden');
+            document.getElementById('control-section').classList.remove('hidden');
+            document.getElementById(`dot-${currentIdx}`).classList.add('bg-yellow-400');
+
+            // Set Zone Content
+            indicator.innerText = `${scenario.zone} Zone`;
+            indicator.style.backgroundColor = scenario.color;
+            scenarioText.innerText = scenario.text;
+
+            // Prepare Options
+            optionsContainer.innerHTML = '';
+            // Shuffle choices so correct isn't always the same position
+            const shuffled = [...scenario.choices].sort(() => Math.random() - 0.5);
+            
+            shuffled.forEach(choice => {
+                const btn = document.createElement('button');
+                btn.className = "choice-btn w-full py-4 px-6 bg-gray-800 border-2 border-gray-600 rounded-xl text-left hover:bg-gray-700 font-bold text-lg hover:border-yellow-400";
+                btn.innerText = choice.text;
+                btn.onclick = () => handleChoice(choice.correct, btn);
+                optionsContainer.appendChild(btn);
+            });
+
+            startTimer();
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (!isPaused) {
+                    timeLeft--;
+                    document.getElementById('timer-display').innerText = timeLeft;
+                    
+                    if (timeLeft <= 5) {
+                        document.getElementById('timer-display').classList.add('animate-pulse');
+                        document.getElementById('timer-display').style.color = '#ff0000';
+                    }
+
+                    if (timeLeft <= 0) {
+                        clearInterval(timerInterval);
+                        handlePause(); // Force pause when time runs out
+                    }
+                }
+            }, 1000);
+        }
+
+        function handlePause() {
+            isPaused = true;
+            clearInterval(timerInterval);
+            
+            // UI Switch
+            document.getElementById('control-section').classList.add('hidden');
+            document.getElementById('choice-section').classList.remove('hidden');
+            
+            playSimpleTone(440, 0.1); 
+        }
+
+        function handleChoice(isCorrect, btnElement) {
+            if (isCorrect) {
+                btnElement.classList.remove('bg-gray-800', 'border-gray-600');
+                btnElement.classList.add('bg-green-600', 'border-green-400', 'text-white');
+                
+                showPowerUp("POWER CHOICE! +10 FOCUS");
+                document.getElementById(`dot-${currentIdx}`).classList.replace('bg-yellow-400', 'bg-green-500');
+
+                currentIdx++;
+                setTimeout(() => {
+                    if (currentIdx < scenarios.length) {
+                        loadScenario();
+                    } else {
+                        showFinish();
+                    }
+                }, 1200);
+            } else {
+                // Shake effect for wrong choice
+                btnElement.classList.add('bg-red-900', 'border-red-500', 'animate-bounce');
+                playSimpleTone(220, 0.2);
+                setTimeout(() => {
+                    btnElement.classList.remove('animate-bounce');
+                }, 500);
+                
+                // Feedback for user
+                const originalText = btnElement.innerText;
+                btnElement.innerText = "Try a safer action...";
+                setTimeout(() => { btnElement.innerText = originalText; }, 1000);
+            }
+        }
+
+        function showPowerUp(text) {
+            const msg = document.getElementById('power-up-msg');
+            const txt = document.getElementById('power-up-text');
+            txt.innerText = text;
+            msg.classList.remove('hidden');
+            
+            playSimpleTone(660, 0.1);
+            setTimeout(() => playSimpleTone(880, 0.15), 100);
+            
+            setTimeout(() => {
+                msg.classList.add('hidden');
+            }, 1000);
+        }
+
+        function showFinish() {
+            document.getElementById('screen-game').classList.add('hidden');
+            document.getElementById('screen-finish').classList.remove('hidden');
+            createConfetti();
+        }
+
+        function createConfetti() {
+            for(let i=0; i<60; i++) {
+                const c = document.createElement('div');
+                c.className = 'confetti';
+                c.style.left = Math.random() * 100 + 'vw';
+                c.style.backgroundColor = ['#ef4444', '#facc15', '#22c55e', '#3b82f6'][Math.floor(Math.random()*4)];
+                c.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                c.style.animationDelay = Math.random() * 3 + 's';
+                document.body.appendChild(c);
+            }
+        }
+
+        function playSimpleTone(freq, duration) {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + duration);
+            } catch(e) { /* Audio fallback */ }
+        }
+    </script>
+</body>
+</html>
